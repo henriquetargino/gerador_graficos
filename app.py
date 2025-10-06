@@ -3,6 +3,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+def formatar_numeros(number):
+    formatted_str = f"{number:,.2f}"
+    return formatted_str.replace(",", "X").replace(".", ",").replace("X", ".")
+
 st.set_page_config(layout="wide", page_title="Gerador de Gráfico de FTDs")
 
 st.title('📊 Gerador de Gráfico de FTDs e Investimento')
@@ -15,7 +19,7 @@ st.markdown("""
         <li>✅ Preencha com seus dados, <strong>mantendo os nomes das colunas originais</strong>.</li>
         <li>✅ A coluna "Dia" deve estar no formato DD/MM/AAAA.</li>
         <li>✅ As colunas "FTDs" e "Valor investido" devem conter apenas números.</li>
-        <li>✅ A coluna "Falha Pag" deve conter apenas "Sim" ou "Não".</li>       
+        <li>✅ A coluna "Falha Pag" deve conter apenas "Sim" ou "Não".</li>      
         <li>✅ Arraste e solte o seu arquivo preenchido na caixa de upload.</li>
     </ul>
 """, unsafe_allow_html=True)
@@ -31,6 +35,10 @@ try:
 except FileNotFoundError:
     st.error("Arquivo 'exemplo.xlsx' não encontrado no diretório do projeto.")
 
+
+with st.expander("Clique para visualizar um exemplo do gráfico gerado"):
+    st.image("grafico.png",  use_container_width=True)
+
 st.divider()
 
 uploaded_file = st.file_uploader(
@@ -40,11 +48,37 @@ uploaded_file = st.file_uploader(
 if uploaded_file is not None:
     try:
         df = pd.read_excel(uploaded_file)
-        st.success("Arquivo carregado com sucesso! Gerando gráfico...")
+        st.success("Arquivo carregado com sucesso! Gerando visualizações...")
 
         df['Dia'] = pd.to_datetime(df['Dia'], format='%d/%m/%Y')
         df['Falha Pag'] = df['Falha Pag'].map({'Sim': True, 'Não': False})
 
+        st.subheader("Métricas Principais do Período")
+
+        total_investido = df['Valor investido'].sum()
+        media_diaria_ftd = df['FTDs'].mean()
+        media_diaria_investimento = df['Valor investido'].mean()
+        
+        melhor_dia_ftd_valor = df['FTDs'].max()
+        melhor_dia_data = df.loc[df['FTDs'].idxmax()]['Dia'].strftime('%d/%m/%Y')
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric(label="💰 Investimento Total", value=f"R$ {formatar_numeros(total_investido)}")
+        
+        with col2:
+            st.metric(label="📈 Média Diária de FTDs", value=f"{media_diaria_ftd:.1f}".replace('.', ','))
+
+        with col3:
+            st.metric(label="💵 Média Diária de Investimento", value=f"R$ {formatar_numeros(media_diaria_investimento)}")
+
+        with col4:
+            st.metric(label=f"🏆 Melhor Dia de FTDs ({int(melhor_dia_ftd_valor)} FTDs)", value=melhor_dia_data)
+        
+        st.divider()
+
+        st.subheader("Análise Gráfica Detalhada")
         fig, ax1 = plt.subplots(figsize=(20, 8))
         df_sucesso = df[~df['Falha Pag']]
         df_falha = df[df['Falha Pag']]
@@ -96,6 +130,3 @@ if uploaded_file is not None:
         st.error(f"Ocorreu um erro ao processar o arquivo. Verifique se ele segue o formato do exemplo. Erro: {e}")
 
 st.divider()
-
-st.subheader("Exemplo de como deve ficar o gráfico gerado:")
-st.image("grafico.png",  use_container_width=True)
